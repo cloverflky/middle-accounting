@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>章节PDF文档管理器</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: "Microsoft Yahei", sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+        /* 左侧目录栏 */
+        .sidebar {
+            width: 280px;
+            background-color: #2c3e50;
+            color: #fff;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar h2 {
+            padding: 20px 16px;
+            font-size: 18px;
+            border-bottom: 1px solid #445566;
+        }
+        .chapter-item {
+            padding: 14px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #3a4b5c;
+            transition: background 0.2s;
+        }
+        .chapter-item:hover {
+            background-color: #3a4b5c;
+        }
+        .chapter-item.active {
+            background-color: #165DFF;
+        }
+        /* 右侧PDF预览区 */
+        .main-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .toolbar {
+            padding:12px 16px;
+            background:#f5f7fa;
+            border-bottom:1px solid #e5e7eb;
+            display:flex;
+            gap:10px;
+            align-items:center;
+        }
+        .toolbar button {
+            padding:6px 12px;
+            border:none;
+            background:#165DFF;
+            color:white;
+            border-radius:4px;
+            cursor:pointer;
+        }
+        .toolbar button:disabled{
+            background:#94a3b8;
+            cursor:not-allowed;
+        }
+        .pdf-container{
+            flex:1;
+            overflow:auto;
+            background:#cccccc;
+            display:flex;
+            justify-content:center;
+            padding:20px;
+        }
+        canvas{
+            box-shadow: 0 2px 12px #00000040;
+        }
+        .tip-empty{
+            margin-top:40px;
+            color:#666;
+            font-size:16px;
+        }
+    </style>
+</head>
+<body>
+    <!--左侧目录-->
+    <div class="sidebar">
+        <h2>文档章节目录</h2>
+        <div id="chapterList">
+            <!--章节数据由JS渲染-->
+        </div>
+    </div>
+    <!--右侧预览区域-->
+    <div class="main-view">
+        <div class="toolbar">
+            <span id="chapterTitle">请在左侧选择章节</span>
+            <div style="margin-left:auto;">
+                <button id="prevPage">上一页</button>
+                <span>第 <span id="pageNum">0</span> / <span id="totalPage">0</span> 页</span>
+                <button id="nextPage">下一页</button>
+            </div>
+        </div>
+        <div class="pdf-container">
+            <div class="tip-empty">请点击左侧章节，加载对应PDF文档</div>
+            <canvas id="pdfCanvas" style="display:none;"></canvas>
+        </div>
+    </div>
+<script>
+// pdfjs全局配置
+const pdfjsLib = window['pdfjs-dist/build/pdf'];
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+// ========== 章节配置，在这里配置你的章节和PDF地址 ==========
+const chapterData = [
+    {
+        id:1,
+        title:"第一章：总论",
+        pdfUrl:"./FM_chapters/01_第一章_总论.pdf"
+    },
+    {
+        id:2,
+        title:"第二章：财务管理基础",
+        pdfUrl:"./FM_chapters/02_第二章_财务管理基础.pdf"
+    },
+    {
+        id:3,
+        title:"第三章：预算管理",
+        pdfUrl:"./FM_chapters/03_第三章_预算管理.pdf"
+    },
+    {
+        id:4,
+        title:"第04章：筹资管理（上）",
+        pdfUrl:"./FM_chapters/04_第四章_筹资管理（上）.pdf"
+    },
+    {
+        id:5,
+        title:"第05章：筹资管理（下）",
+        pdfUrl:"./FM_chapters/05_第五章_筹资管理（下）.pdf"
+    },
+    {
+        id:6,
+        title:"第06章：投资管理",
+        pdfUrl:"./FM_chapters/06_第六章_投资管理.pdf"
+    },
+    {
+        id:7,
+        title:"第07章：营运资金管理",
+        pdfUrl:"./FM_chapters/07_第七章_营运资金管理.pdf"
+    },
+    {
+        id:8,
+        title:"第08章：成本管理",
+        pdfUrl:"./FM_chapters/08_第八章_成本管理.pdf"
+    },
+    {
+        id:9,
+        title:"第09章：收入与分配管理",
+        pdfUrl:"./FM_chapters/09_第九章_收入与分配管理.pdf"
+    },
+    {
+        id:10,
+        title:"第10章：财务分析与评价",
+        pdfUrl:"./pdf/10_第十章_财务分析与评价.pdf"
+    }
+];
+//DOM
+const chapterListDom = document.getElementById('chapterList');
+const chapterTitleDom = document.getElementById('chapterTitle');
+const pdfCanvas = document.getElementById('pdfCanvas');
+const ctx = pdfCanvas.getContext('2d');
+const tipEmpty = document.querySelector('.tip-empty');
+const prevBtn = document.getElementById('prevPage');
+const nextBtn = document.getElementById('nextPage');
+const pageNumDom = document.getElementById('pageNum');
+const totalPageDom = document.getElementById('totalPage');
+let currentPdfDoc = null;
+let currentPage = 1;
+let scale = 1.2;
+//渲染左侧目录
+function renderChapterList(){
+    chapterListDom.innerHTML = '';
+    chapterData.forEach(item=>{
+        const div = document.createElement('div');
+        div.className = "chapter-item";
+        div.innerText = item.title;
+        div.dataset.id = item.id;
+        div.onclick = ()=>{
+            //清除全部active
+            document.querySelectorAll('.chapter-item').forEach(d=>d.classList.remove('active'));
+            div.classList.add('active');
+            loadPdf(item.pdfUrl, item.title);
+        }
+        chapterListDom.appendChild(div);
+    })
+}
+//加载PDF
+async function loadPdf(url, title){
+    chapterTitleDom.innerText = title;
+    tipEmpty.style.display = 'none';
+    pdfCanvas.style.display = 'block';
+    currentPage =1;
+    try{
+        const pdfDoc = await pdfjsLib.getDocument(url).promise;
+        currentPdfDoc = pdfDoc;
+        totalPageDom.innerText = pdfDoc.numPages;
+        renderPage(currentPage);
+        toggleBtn();
+    }catch(err){
+        alert("PDF加载失败，请检查文件路径："+ err.message);
+        tipEmpty.style.display='block';
+        pdfCanvas.style.display='none';
+    }
+}
+//渲染PDF某一页
+async function renderPage(pageNo){
+    const page = await currentPdfDoc.getPage(pageNo);
+    const viewport = page.getViewport({scale:scale});
+    pdfCanvas.width = viewport.width;
+    pdfCanvas.height = viewport.height;
+    await page.render({canvasContext:ctx, viewport:viewport}).promise;
+    pageNumDom.innerText = pageNo;
+    toggleBtn();
+}
+//翻页按钮状态
+function toggleBtn(){
+    prevBtn.disabled = currentPage <=1;
+    nextBtn.disabled = currentPage >= currentPdfDoc.numPages;
+}
+prevBtn.onclick = ()=>{
+    if(currentPage>1){
+        currentPage--;
+        renderPage(currentPage);
+    }
+}
+nextBtn.onclick = ()=>{
+    if(currentPage < currentPdfDoc.numPages){
+        currentPage++;
+        renderPage(currentPage);
+    }
+}
+renderChapterList();
+</script>
+</body>
+</html>
