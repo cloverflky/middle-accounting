@@ -156,7 +156,6 @@
 // pdfjs全局配置
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
 // ==========【双科目配置】 ==========
 const categoryData = [
     {
@@ -172,10 +171,10 @@ const categoryData = [
             {id:8, title:"第08章：成本管理", pdfUrl:"./FM_chapters/08_第八章_成本管理.pdf"},
             {id:9, title:"第09章：收入与分配管理", pdfUrl:"./FM_chapters/09_第九章_收入与分配管理.pdf"},
             {id:10,title:"第10章：财务分析与评价", pdfUrl:"./FM_chapters/10_第十章_财务分析与评价.pdf"},
-            {id:8, title:"第11章：公式大全", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 公式大全（7.24更新）.pdf"},
-            {id:9, title:"第12章：高效刷题法", pdfUrl:"./FM_chapters/【BT课件】财管通关秘法：高效刷题法.pdf"},
-            {id:8, title:"第11章：价值评估", pdfUrl:"./FM_chapters/【BT课件】掌握价值评估原理，轻松搞定财管大题.pdf"},
-            {id:9, title:"第12章：主观题汇总", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 主观题汇总（8.11更新）.pdf"}
+            {id:11,title:"第11章：公式大全", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 公式大全（7.24更新）.pdf"},
+            {id:12,title:"第12章：高效刷题法", pdfUrl:"./FM_chapters/【BT课件】财管通关秘法：高效刷题法.pdf"},
+            {id:13,title:"第13章：价值评估", pdfUrl:"./FM_chapters/【BT课件】掌握价值评估原理，轻松搞定财管大题.pdf"},
+            {id:14,title:"第14章：主观题汇总", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 主观题汇总（8.11更新）.pdf"}
         ]
     },
     {
@@ -213,7 +212,6 @@ const categoryData = [
         ]
     }
 ];
-
 //DOM
 const chapterListDom = document.getElementById('chapterList');
 const chapterTitleDom = document.getElementById('chapterTitle');
@@ -229,34 +227,28 @@ const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
 const zoomPercentDom = document.getElementById('zoomPercent');
 const pdfWrap = document.getElementById("pdfWrap");
-
 let currentPdfDoc = null;
 let currentPage = 1;
 let scale = 1.4;
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4.0;
 const STEP = 0.15;
-
 // 更新缩放百分比显示
 function updateZoomDisplay(){
     zoomPercentDom.innerText = Math.round(scale * 100);
 }
-
 //渲染【默认全部展开】双科目目录
 function renderChapterList(){
     chapterListDom.innerHTML = '';
     categoryData.forEach(cat=>{
         const catWrap = document.createElement('div');
         catWrap.className = 'category-item';
-
         const catHeader = document.createElement('div');
         catHeader.className = 'category-header';
         //默认展开，箭头向下▼
         catHeader.innerHTML = `<span>${cat.categoryName}</span><span class="arrow">▼</span>`;
-
         const subWrap = document.createElement('div');
         subWrap.className = 'chapter-sub-list';
-
         cat.chapters.forEach(ch=>{
             const chDiv = document.createElement('div');
             chDiv.className = 'chapter-item';
@@ -271,20 +263,17 @@ function renderChapterList(){
             }
             subWrap.appendChild(chDiv);
         })
-
         //点击科目标题切换折叠
         catHeader.onclick = ()=>{
             subWrap.classList.toggle('collapse');
             const arrow = catHeader.querySelector('.arrow');
             arrow.classList.toggle('fold');
         }
-
         catWrap.appendChild(catHeader);
         catWrap.appendChild(subWrap);
         chapterListDom.appendChild(catWrap);
     })
 }
-
 //加载PDF
 async function loadPdf(url, title){
     chapterTitleDom.innerText = title;
@@ -303,7 +292,6 @@ async function loadPdf(url, title){
         pdfCanvas.style.display='none';
     }
 }
-
 //超清渲染PDF页面
 async function renderPage(pageNo){
     const page = await currentPdfDoc.getPage(pageNo);
@@ -311,30 +299,25 @@ async function renderPage(pageNo){
     const dpr = window.devicePixelRatio || 1;
     const enhanceRatio = 1.4;
     const totalRatio = dpr * enhanceRatio;
-
     pdfCanvas.width = viewport.width * totalRatio;
     pdfCanvas.height = viewport.height * totalRatio;
     pdfCanvas.style.width = viewport.width + "px";
     pdfCanvas.style.height = viewport.height + "px";
-
     ctx.setTransform(totalRatio,0,0,totalRatio,0,0);
     await page.render({
         canvasContext:ctx,
         viewport:viewport,
         intent:"print"
     }).promise;
-
     pageNumDom.innerText = pageNo;
     toggleBtn();
     updateZoomDisplay();
 }
-
 //翻页按钮状态
 function toggleBtn(){
     prevBtn.disabled = currentPage <=1;
     nextBtn.disabled = currentPage >= currentPdfDoc.numPages;
 }
-
 prevBtn.onclick = ()=>{
     if(currentPage>1){
         currentPage--;
@@ -347,7 +330,6 @@ nextBtn.onclick = ()=>{
         renderPage(currentPage);
     }
 }
-
 zoomInBtn.onclick = ()=>{
     if(!currentPdfDoc) return;
     if(scale + STEP <= MAX_SCALE){
@@ -367,7 +349,6 @@ zoomResetBtn.onclick = ()=>{
     scale = 1.4;
     renderPage(currentPage);
 }
-
 //鼠标滚轮缩放PDF画布
 pdfWrap.addEventListener('wheel',(e)=>{
     if(!currentPdfDoc) return;
@@ -384,7 +365,6 @@ pdfWrap.addEventListener('wheel',(e)=>{
         }
     }
 },{passive:false});
-
 //初始化渲染目录
 renderChapterList();
 updateZoomDisplay();
