@@ -55,6 +55,7 @@
             display:flex;
             gap:10px;
             align-items:center;
+            flex-wrap: wrap;
         }
         .toolbar button {
             padding:6px 12px;
@@ -67,6 +68,10 @@
         .toolbar button:disabled{
             background:#94a3b8;
             cursor:not-allowed;
+        }
+        .zoom-info{
+            min-width:60px;
+            text-align:center;
         }
         .pdf-container{
             flex:1;
@@ -98,6 +103,12 @@
     <div class="main-view">
         <div class="toolbar">
             <span id="chapterTitle">请在左侧选择章节</span>
+            <div>
+                <button id="zoomOut">-</button>
+                <span class="zoom-info"><span id="zoomPercent">120</span>%</span>
+                <button id="zoomIn">+</button>
+                <button id="zoomReset">重置</button>
+            </div>
             <div style="margin-left:auto;">
                 <button id="prevPage">上一页</button>
                 <span>第 <span id="pageNum">0</span> / <span id="totalPage">0</span> 页</span>
@@ -113,6 +124,7 @@
 // pdfjs全局配置
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
 // ========== 章节配置，在这里配置你的章节和PDF地址 ==========
 const chapterData = [
     {
@@ -166,6 +178,7 @@ const chapterData = [
         pdfUrl:"./pdf/10_第十章_财务分析与评价.pdf"
     }
 ];
+
 //DOM
 const chapterListDom = document.getElementById('chapterList');
 const chapterTitleDom = document.getElementById('chapterTitle');
@@ -176,9 +189,23 @@ const prevBtn = document.getElementById('prevPage');
 const nextBtn = document.getElementById('nextPage');
 const pageNumDom = document.getElementById('pageNum');
 const totalPageDom = document.getElementById('totalPage');
+const zoomInBtn = document.getElementById('zoomIn');
+const zoomOutBtn = document.getElementById('zoomOut');
+const zoomResetBtn = document.getElementById('zoomReset');
+const zoomPercentDom = document.getElementById('zoomPercent');
+
 let currentPdfDoc = null;
 let currentPage = 1;
 let scale = 1.2;
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 3.0;
+const STEP = 0.2;
+
+// 更新缩放百分比显示
+function updateZoomDisplay(){
+    zoomPercentDom.innerText = Math.round(scale * 100);
+}
+
 //渲染左侧目录
 function renderChapterList(){
     chapterListDom.innerHTML = '';
@@ -191,11 +218,14 @@ function renderChapterList(){
             //清除全部active
             document.querySelectorAll('.chapter-item').forEach(d=>d.classList.remove('active'));
             div.classList.add('active');
+            scale = 1.2; //切换章节重置缩放
+            updateZoomDisplay();
             loadPdf(item.pdfUrl, item.title);
         }
         chapterListDom.appendChild(div);
     })
 }
+
 //加载PDF
 async function loadPdf(url, title){
     chapterTitleDom.innerText = title;
@@ -214,21 +244,33 @@ async function loadPdf(url, title){
         pdfCanvas.style.display='none';
     }
 }
-//渲染PDF某一页
+
+//渲染PDF某一页 -- 修复高分屏模糊（devicePixelRatio）
 async function renderPage(pageNo){
     const page = await currentPdfDoc.getPage(pageNo);
     const viewport = page.getViewport({scale:scale});
-    pdfCanvas.width = viewport.width;
-    pdfCanvas.height = viewport.height;
+
+    //解决高分屏幕PDF模糊核心逻辑
+    const dpr = window.devicePixelRatio || 1;
+    pdfCanvas.width = viewport.width * dpr;
+    pdfCanvas.height = viewport.height * dpr;
+    pdfCanvas.style.width = viewport.width + "px";
+    pdfCanvas.style.height = viewport.height + "px";
+    ctx.scale(dpr, dpr);
+
     await page.render({canvasContext:ctx, viewport:viewport}).promise;
     pageNumDom.innerText = pageNo;
     toggleBtn();
+    updateZoomDisplay();
 }
+
 //翻页按钮状态
 function toggleBtn(){
     prevBtn.disabled = currentPage <=1;
     nextBtn.disabled = currentPage >= currentPdfDoc.numPages;
 }
+
+//翻页
 prevBtn.onclick = ()=>{
     if(currentPage>1){
         currentPage--;
@@ -241,7 +283,30 @@ nextBtn.onclick = ()=>{
         renderPage(currentPage);
     }
 }
+
+//缩放事件
+zoomInBtn.onclick = ()=>{
+    if(!currentPdfDoc) return;
+    if(scale + STEP <= MAX_SCALE){
+        scale += STEP;
+        renderPage(currentPage);
+    }
+}
+zoomOutBtn.onclick = ()=>{
+    if(!currentPdfDoc) return;
+    if(scale - STEP >= MIN_SCALE){
+        scale -= STEP;
+        renderPage(currentPage);
+    }
+}
+zoomResetBtn.onclick = ()=>{
+    if(!currentPdfDoc) return;
+    scale = 1.2;
+    renderPage(currentPage);
+}
+
 renderChapterList();
+updateZoomDisplay();
 </script>
 </body>
 </html>
