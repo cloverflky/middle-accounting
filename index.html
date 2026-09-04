@@ -51,14 +51,14 @@
         .arrow.fold{
             transform: rotate(-90deg);
         }
-        /* 子章节列表容器 */
+        /* 子章节列表：【默认展开】max‑height很大；加collapse类才收起 */
         .chapter-sub-list{
-            max-height:2000px;
+            max-height: 2000px;
             overflow:hidden;
             transition: max-height 0.35s ease;
         }
         .chapter-sub-list.collapse{
-            max-height:0px;
+            max-height: 0px;
         }
         /*子章节项，缩进*/
         .chapter-item {
@@ -114,6 +114,7 @@
         }
         canvas{
             box-shadow: 0 2px 12px #00000040;
+            image-rendering: crisp-edges;
         }
         .tip-empty{
             margin-top:40px;
@@ -136,7 +137,7 @@
             <span id="chapterTitle">请在左侧选择章节</span>
             <div>
                 <button id="zoomOut">-</button>
-                <span class="zoom-info"><span id="zoomPercent">120</span>%</span>
+                <span class="zoom-info"><span id="zoomPercent">140</span>%</span>
                 <button id="zoomIn">+</button>
                 <button id="zoomReset">重置</button>
             </div>
@@ -146,7 +147,7 @@
                 <button id="nextPage">下一页</button>
             </div>
         </div>
-        <div class="pdf-container">
+        <div class="pdf-container" id="pdfWrap">
             <div class="tip-empty">请点击左侧章节，加载对应PDF文档</div>
             <canvas id="pdfCanvas" style="display:none;"></canvas>
         </div>
@@ -156,7 +157,7 @@
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-// ==========【重点】双层数据结构：两大科目分类，在此修改你的PDF信息 ==========
+// ==========【双科目配置】 ==========
 const categoryData = [
     {
         categoryName:"财务管理【科目一】",
@@ -176,32 +177,31 @@ const categoryData = [
     {
         categoryName:"中级会计实务【科目二】",
         chapters:[
-            {id:101, title:"01", pdfUrl:"./accounting _chapters/01 第一章 总论.pdf"},
-            {id:102, title:"02", pdfUrl:"./accounting _chapters/02 第二章 存货.pdf"},
-            {id:103, title:"03", pdfUrl:"./accounting _chapters/03 第三章 固定资产.pdf"}
-            {id:104, title:"04", pdfUrl:"./accounting _chapters/04 第四章 无形资产.pdf"},
-            {id:105, title:"05", pdfUrl:"./accounting _chapters/05 第五章 投资性房地产.pdf"},
-            {id:106, title:"06", pdfUrl:"./accounting _chapters/06 第六章 长期股权投资和合营安排.pdf"}
-            {id:107, title:"07", pdfUrl:"./accounting _chapters/07 第七章 资产减值.pdf"},
-            {id:108, title:"08", pdfUrl:"./accounting _chapters/08 第八章 金融资产和金融负债.pdf"},
-            {id:109, title:"09", pdfUrl:"./accounting _chapters/09 第九章 职工薪酬.pdf"}
-            {id:110, title:"10", pdfUrl:"./accounting _chapters/10 第十章 股份支付.pdf"},
-            {id:111, title:"11", pdfUrl:"./accounting _chapters/11 第十一章 .pdf"},
-            {id:112, title:"12", pdfUrl:"./accounting _chapters/12 第十二章 或有事项.pdf"}
-            {id:113, title:"13", pdfUrl:"./accounting _chapters/13 第十三章 收入 .pdf"},
-            {id:114, title:"14", pdfUrl:"./accounting _chapters/14 第十四章 政府补助.pdf"},
-            {id:115, title:"15", pdfUrl:"./accounting _chapters/15 第十五章 非货币性资产交换.pdf"}
-            {id:116, title:"16", pdfUrl:"./accounting _chapters/16 第十六章 债务重组.pdf"},
-            {id:117, title:"17", pdfUrl:"./accounting _chapters/17 第十七章 .pdf"},
-            {id:118, title:"18", pdfUrl:"./accounting _chapters/18 第十八章 .pdf"}
-            {id:119, title:"19", pdfUrl:"./accounting _chapters/19 第十九章 .pdf"},
-            {id:120, title:"20", pdfUrl:"./accounting _chapters/20 第二十章 .pdf"},
-            {id:121, title:"21", pdfUrl:"./accounting _chapters/21 第二十一章 企业合并与合并财务报表.pdf"}
-            {id:122, title:"22", pdfUrl:"./accounting _chapters/22 第二十二章 会计政策、会计估计变更和差错更正.pdf"}
-            {id:123, title:"23", pdfUrl:"./accounting _chapters/23 第二十三章 资产负债表日后事项.pdf"},
-            {id:124, title:"24", pdfUrl:"./accounting _chapters/24 第二十四章 政府会计.pdf"},
-            {id:125, title:"25", pdfUrl:"./accounting _chapters/25 第二十五章 民间非营利组织会计.pdf"}
-            // 在这里继续追加实务剩余章节
+            {id:101, title:"01总论", pdfUrl:"./accounting_chapters/01 第一章 总论.pdf"},
+            {id:102, title:"02 存货", pdfUrl:"./accounting_chapters/02 第二章 存货.pdf"},
+            {id:103, title:"03 固定资产", pdfUrl:"./accounting_chapters/03 第三章 固定资产.pdf"},
+            {id:104, title:"04 无形资产", pdfUrl:"./accounting_chapters/04 第四章 无形资产.pdf"},
+            {id:105, title:"05 投资性房地产", pdfUrl:"./accounting_chapters/05 第五章 投资性房地产.pdf"},
+            {id:106, title:"06 长期股权投资和合营安排", pdfUrl:"./accounting_chapters/06 第六章 长期股权投资和合营安排.pdf"},
+            {id:107, title:"07 资产减值", pdfUrl:"./accounting_chapters/07 第七章 资产减值.pdf"},
+            {id:108, title:"08 金融资产和金融负债", pdfUrl:"./accounting_chapters/08 第八章 金融资产和金融负债.pdf"},
+            {id:109, title:"09 职工薪酬", pdfUrl:"./accounting_chapters/09 第九章 职工薪酬.pdf"},
+            {id:110, title:"10 股份支付", pdfUrl:"./accounting_chapters/10 第十章 股份支付.pdf"},
+            {id:111, title:"11 借款费用", pdfUrl:"./accounting_chapters/11 第十一章 .pdf"},
+            {id:112, title:"12 或有事项", pdfUrl:"./accounting_chapters/12 第十二章 或有事项.pdf"},
+            {id:113, title:"13 收入", pdfUrl:"./accounting_chapters/13 第十三章 收入 .pdf"},
+            {id:114, title:"14 政府补助", pdfUrl:"./accounting_chapters/14 第十四章 政府补助.pdf"},
+            {id:115, title:"15 非货币性资产交换", pdfUrl:"./accounting_chapters/15 第十五章 非货币性资产交换.pdf"},
+            {id:116, title:"16 债务重组", pdfUrl:"./accounting_chapters/16 第十六章 债务重组.pdf"},
+            {id:117, title:"17 所得税", pdfUrl:"./accounting_chapters/17 第十七章 .pdf"},
+            {id:118, title:"18 外币折算", pdfUrl:"./accounting_chapters/18 第十八章 .pdf"},
+            {id:119, title:"19 租赁", pdfUrl:"./accounting_chapters/19 第十九章 .pdf"},
+            {id:120, title:"20 持有待售的非流动资产、处置组和终止经营", pdfUrl:"./accounting_chapters/20 第二十章 .pdf"},
+            {id:121, title:"21 企业合并与合并财务报表", pdfUrl:"./accounting_chapters/21 第二十一章 企业合并与合并财务报表.pdf"},
+            {id:122, title:"22 会计政策、会计估计变更和差错更正", pdfUrl:"./accounting_chapters/22 第二十二章 会计政策、会计估计变更和差错更正.pdf"},
+            {id:123, title:"23 资产负债表日后事项", pdfUrl:"./accounting_chapters/23 第二十三章 资产负债表日后事项.pdf"},
+            {id:124, title:"24 政府会计", pdfUrl:"./accounting_chapters/24 第二十四章 政府会计.pdf"},
+            {id:125, title:"25 民间非营利组织会计", pdfUrl:"./accounting_chapters/25 第二十五章 民间非营利组织会计.pdf"}
         ]
     }
 ];
@@ -220,36 +220,35 @@ const zoomInBtn = document.getElementById('zoomIn');
 const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
 const zoomPercentDom = document.getElementById('zoomPercent');
+const pdfWrap = document.getElementById("pdfWrap");
 
 let currentPdfDoc = null;
 let currentPage = 1;
-let scale = 1.2;
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 3.0;
-const STEP = 0.2;
+let scale = 1.4;
+const MIN_SCALE = 0.4;
+const MAX_SCALE = 4.0;
+const STEP = 0.15;
 
 // 更新缩放百分比显示
 function updateZoomDisplay(){
     zoomPercentDom.innerText = Math.round(scale * 100);
 }
 
-//渲染【分类+二级章节】手风琴菜单
+//渲染【默认全部展开】双科目目录
 function renderChapterList(){
     chapterListDom.innerHTML = '';
     categoryData.forEach(cat=>{
         const catWrap = document.createElement('div');
         catWrap.className = 'category-item';
 
-        //分类头部（大类标题+箭头）
         const catHeader = document.createElement('div');
         catHeader.className = 'category-header';
+        //默认展开，箭头向下▼
         catHeader.innerHTML = `<span>${cat.categoryName}</span><span class="arrow">▼</span>`;
 
-        //子章节容器
         const subWrap = document.createElement('div');
         subWrap.className = 'chapter-sub-list';
 
-        //渲染该分类下全部子章节
         cat.chapters.forEach(ch=>{
             const chDiv = document.createElement('div');
             chDiv.className = 'chapter-item';
@@ -258,14 +257,14 @@ function renderChapterList(){
             chDiv.onclick = ()=>{
                 document.querySelectorAll('.chapter-item').forEach(d=>d.classList.remove('active'));
                 chDiv.classList.add('active');
-                scale = 1.2; //切换PDF重置缩放
+                scale = 1.4;
                 updateZoomDisplay();
                 loadPdf(ch.pdfUrl, ch.title);
             }
             subWrap.appendChild(chDiv);
         })
 
-        //点击大类标题，折叠展开子列表
+        //点击科目标题切换折叠
         catHeader.onclick = ()=>{
             subWrap.classList.toggle('collapse');
             const arrow = catHeader.querySelector('.arrow');
@@ -297,17 +296,26 @@ async function loadPdf(url, title){
     }
 }
 
-//渲染PDF某一页 -- 修复高分屏模糊
+//超清渲染PDF页面
 async function renderPage(pageNo){
     const page = await currentPdfDoc.getPage(pageNo);
     const viewport = page.getViewport({scale:scale});
     const dpr = window.devicePixelRatio || 1;
-    pdfCanvas.width = viewport.width * dpr;
-    pdfCanvas.height = viewport.height * dpr;
+    const enhanceRatio = 1.4;
+    const totalRatio = dpr * enhanceRatio;
+
+    pdfCanvas.width = viewport.width * totalRatio;
+    pdfCanvas.height = viewport.height * totalRatio;
     pdfCanvas.style.width = viewport.width + "px";
     pdfCanvas.style.height = viewport.height + "px";
-    ctx.scale(dpr, dpr);
-    await page.render({canvasContext:ctx, viewport:viewport}).promise;
+
+    ctx.setTransform(totalRatio,0,0,totalRatio,0,0);
+    await page.render({
+        canvasContext:ctx,
+        viewport:viewport,
+        intent:"print"
+    }).promise;
+
     pageNumDom.innerText = pageNo;
     toggleBtn();
     updateZoomDisplay();
@@ -319,7 +327,6 @@ function toggleBtn(){
     nextBtn.disabled = currentPage >= currentPdfDoc.numPages;
 }
 
-//翻页
 prevBtn.onclick = ()=>{
     if(currentPage>1){
         currentPage--;
@@ -333,7 +340,6 @@ nextBtn.onclick = ()=>{
     }
 }
 
-//缩放事件
 zoomInBtn.onclick = ()=>{
     if(!currentPdfDoc) return;
     if(scale + STEP <= MAX_SCALE){
@@ -350,10 +356,28 @@ zoomOutBtn.onclick = ()=>{
 }
 zoomResetBtn.onclick = ()=>{
     if(!currentPdfDoc) return;
-    scale = 1.2;
+    scale = 1.4;
     renderPage(currentPage);
 }
 
+//鼠标滚轮缩放PDF画布
+pdfWrap.addEventListener('wheel',(e)=>{
+    if(!currentPdfDoc) return;
+    e.preventDefault();
+    if(e.deltaY < 0){
+        if(scale + STEP <= MAX_SCALE){
+            scale += STEP;
+            renderPage(currentPage);
+        }
+    }else{
+        if(scale - STEP >= MIN_SCALE){
+            scale -= STEP;
+            renderPage(currentPage);
+        }
+    }
+},{passive:false});
+
+//初始化渲染目录
 renderChapterList();
 updateZoomDisplay();
 </script>
