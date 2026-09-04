@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>章节PDF文档管理器</title>
+    <title>财务管理PDF文档管理器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         * {
@@ -17,7 +17,6 @@
             display: flex;
             overflow: hidden;
         }
-        /* 左侧目录栏 */
         .sidebar {
             width: 320px;
             background-color: #2c3e50;
@@ -30,39 +29,8 @@
             font-size: 18px;
             border-bottom: 1px solid #445566;
         }
-        /* 一级分类（科目大类） */
-        .category-item{
-            border-bottom:1px solid #3a4b5c;
-        }
-        .category-header{
-            padding:14px 16px;
-            cursor:pointer;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            background-color:#34495e;
-        }
-        .category-header:hover{
-            background-color:#3a4b5c;
-        }
-        .arrow{
-            transition: transform 0.25s;
-        }
-        .arrow.fold{
-            transform: rotate(-90deg);
-        }
-        /* 子章节列表：【默认展开】max‑height很大；加collapse类才收起 */
-        .chapter-sub-list{
-            max-height: 2000px;
-            overflow:hidden;
-            transition: max-height 0.35s ease;
-        }
-        .chapter-sub-list.collapse{
-            max-height: 0px;
-        }
-        /*子章节项，缩进*/
         .chapter-item {
-            padding: 12px 16px 12px 32px;
+            padding: 12px 16px 12px 20px;
             cursor: pointer;
             border-bottom: 1px solid #3a4b5c;
             transition: background 0.2s;
@@ -73,7 +41,6 @@
         .chapter-item.active {
             background-color: #165DFF;
         }
-        /* 右侧PDF预览区 */
         .main-view {
             flex: 1;
             display: flex;
@@ -124,14 +91,10 @@
     </style>
 </head>
 <body>
-    <!--左侧目录-->
     <div class="sidebar">
-        <h2>文档章节目录</h2>
-        <div id="chapterList">
-            <!--科目分类+子章节由JS渲染-->
-        </div>
+        <h2>财务管理 - 章节目录</h2>
+        <div id="chapterList"></div>
     </div>
-    <!--右侧预览区域-->
     <div class="main-view">
         <div class="toolbar">
             <span id="chapterTitle">请在左侧选择章节</span>
@@ -153,66 +116,26 @@
         </div>
     </div>
 <script>
-// pdfjs全局配置
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-// ==========【双科目配置】 ==========
-const categoryData = [
-    {
-        categoryName:"财务管理【科目一】",
-        chapters:[
-            {id:1, title:"第01章：总论", pdfUrl:"./FM_chapters/01_第一章_总论.pdf"},
-            {id:2, title:"第02章：财务管理基础", pdfUrl:"./FM_chapters/02_第二章_财务管理基础.pdf"},
-            {id:3, title:"第03章：预算管理", pdfUrl:"./FM_chapters/03_第三章_预算管理.pdf"},
-            {id:4, title:"第04章：筹资管理（上）", pdfUrl:"./FM_chapters/04_第四章_筹资管理（上）.pdf"},
-            {id:5, title:"第05章：筹资管理（下）", pdfUrl:"./FM_chapters/05_第五章_筹资管理（下）.pdf"},
-            {id:6, title:"第06章：投资管理", pdfUrl:"./FM_chapters/06_第六章_投资管理.pdf"},
-            {id:7, title:"第07章：营运资金管理", pdfUrl:"./FM_chapters/07_第七章_营运资金管理.pdf"},
-            {id:8, title:"第08章：成本管理", pdfUrl:"./FM_chapters/08_第八章_成本管理.pdf"},
-            {id:9, title:"第09章：收入与分配管理", pdfUrl:"./FM_chapters/09_第九章_收入与分配管理.pdf"},
-            {id:10,title:"第10章：财务分析与评价", pdfUrl:"./FM_chapters/10_第十章_财务分析与评价.pdf"},
-            {id:11,title:"第11章：公式大全", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 公式大全（7.24更新）.pdf"},
-            {id:12,title:"第12章：高效刷题法", pdfUrl:"./FM_chapters/【BT课件】财管通关秘法：高效刷题法.pdf"},
-            {id:13,title:"第13章：价值评估", pdfUrl:"./FM_chapters/【BT课件】掌握价值评估原理，轻松搞定财管大题.pdf"},
-            {id:14,title:"第14章：主观题汇总", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 主观题汇总（8.11更新）.pdf"}
-        ]
-    },
-    {
-        categoryName:"中级会计实务【科目二】",
-        chapters:[
-            {id:101, title:"01总论", pdfUrl:"./accounting_chapters/01 第一章 总论.pdf"},
-            {id:102, title:"02 存货", pdfUrl:"./accounting_chapters/02 第二章 存货.pdf"},
-            {id:103, title:"03 固定资产", pdfUrl:"./accounting_chapters/03 第三章 固定资产.pdf"},
-            {id:104, title:"04 无形资产", pdfUrl:"./accounting_chapters/04 第四章 无形资产.pdf"},
-            {id:105, title:"05 投资性房地产", pdfUrl:"./accounting_chapters/05 第五章 投资性房地产.pdf"},
-            {id:106, title:"06 长期股权投资和合营安排", pdfUrl:"./accounting_chapters/06 第六章 长期股权投资和合营安排.pdf"},
-            {id:107, title:"07 资产减值", pdfUrl:"./accounting_chapters/07 第七章 资产减值.pdf"},
-            {id:108, title:"08 金融资产和金融负债", pdfUrl:"./accounting_chapters/08 第八章 金融资产和金融负债.pdf"},
-            {id:109, title:"09 职工薪酬", pdfUrl:"./accounting_chapters/09 第九章 职工薪酬.pdf"},
-            {id:110, title:"10 股份支付", pdfUrl:"./accounting_chapters/10 第十章 股份支付.pdf"},
-            {id:111, title:"11 借款费用", pdfUrl:"./accounting_chapters/11 第十一章 .pdf"},
-            {id:112, title:"12 或有事项", pdfUrl:"./accounting_chapters/12 第十二章 或有事项.pdf"},
-            {id:113, title:"13 收入", pdfUrl:"./accounting_chapters/13 第十三章 收入 .pdf"},
-            {id:114, title:"14 政府补助", pdfUrl:"./accounting_chapters/14 第十四章 政府补助.pdf"},
-            {id:115, title:"15 非货币性资产交换", pdfUrl:"./accounting_chapters/15 第十五章 非货币性资产交换.pdf"},
-            {id:116, title:"16 债务重组", pdfUrl:"./accounting_chapters/16 第十六章 债务重组.pdf"},
-            {id:117, title:"17 所得税", pdfUrl:"./accounting_chapters/17 第十七章 .pdf"},
-            {id:118, title:"18 外币折算", pdfUrl:"./accounting_chapters/18 第十八章 .pdf"},
-            {id:119, title:"19 租赁", pdfUrl:"./accounting_chapters/19 第十九章 .pdf"},
-            {id:120, title:"20 持有待售的非流动资产、处置组和终止经营", pdfUrl:"./accounting_chapters/20 第二十章 .pdf"},
-            {id:121, title:"21 企业合并与合并财务报表", pdfUrl:"./accounting_chapters/21 第二十一章 企业合并与合并财务报表.pdf"},
-            {id:122, title:"22 会计政策、会计估计变更和差错更正", pdfUrl:"./accounting_chapters/22 第二十二章 会计政策、会计估计变更和差错更正.pdf"},
-            {id:123, title:"23 资产负债表日后事项", pdfUrl:"./accounting_chapters/23 第二十三章 资产负债表日后事项.pdf"},
-            {id:124, title:"24 政府会计", pdfUrl:"./accounting_chapters/24 第二十四章 政府会计.pdf"},
-            {id:125, title:"25 民间非营利组织会计", pdfUrl:"./accounting_chapters/25 第二十五章 民间非营利组织会计.pdf"},
-            {id:126, title:"26 分录大全", pdfUrl:"./accounting_chapters/【BT教育】2026年中级 会计实务 分录大全（6.15更新）.pdf"},
-            {id:127, title:"27  收入易混淆科目", pdfUrl:"./accounting_chapters/【BT教育】2026年中级 会计实务 收入易混淆科目.pdf"},
-            {id:128, title:"28  易错易混淆", pdfUrl:"./accounting_chapters/【BT教育】2026年中级 会计实务 易错易混淆（6.15更新）.pdf"},
-            {id:129, title:"29  长投易错易混淆", pdfUrl:"./accounting_chapters/【BT教育】长期股权投资易错易混淆.pdf"}
-        ]
-    }
+
+const chapters = [01
+    {id:1, title:"第01章：总论", pdfUrl:"./FM_chapters/01_第一章_总论.pdf"},
+    {id:2, title:"第02章：财务管理基础", pdfUrl:"./FM_chapters/02_第二章_财务管理基础.pdf"},
+    {id:3, title:"第03章：预算管理", pdfUrl:"./FM_chapters/03_第三章_预算管理.pdf"},
+    {id:4, title:"第04章：筹资管理（上）", pdfUrl:"./FM_chapters/04_第四章_筹资管理（上）.pdf"},
+    {id:5, title:"第05章：筹资管理（下）", pdfUrl:"./FM_chapters/05_第五章_筹资管理（下）.pdf"},
+    {id:6, title:"第06章：投资管理", pdfUrl:"./FM_chapters/06_第六章_投资管理.pdf"},
+    {id:7, title:"第07章：营运资金管理", pdfUrl:"./FM_chapters/07_第七章_营运资金管理.pdf"},
+    {id:8, title:"第08章：成本管理", pdfUrl:"./FM_chapters/08_第八章_成本管理.pdf"},
+    {id:9, title:"第09章：收入与分配管理", pdfUrl:"./FM_chapters/09_第九章_收入与分配管理.pdf"},
+    {id:10,title:"第10章：财务分析与评价", pdfUrl:"./FM_chapters/10_第十章_财务分析与评价.pdf"},
+    {id:11,title:"第11章：公式大全", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 公式大全（7.24更新）.pdf"},
+    {id:12,title:"第12章：高效刷题法", pdfUrl:"./FM_chapters/【BT课件】财管通关秘法：高效刷题法.pdf"},
+    {id:13,title:"第13章：价值评估", pdfUrl:"./FM_chapters/【BT课件】掌握价值评估原理，轻松搞定财管大题.pdf"},
+    {id:14,title:"第14章：主观题汇总", pdfUrl:"./FM_chapters/【BT教育】2026年中级 财务管理 主观题汇总（8.11更新）.pdf"}
 ];
-//DOM
+
 const chapterListDom = document.getElementById('chapterList');
 const chapterTitleDom = document.getElementById('chapterTitle');
 const pdfCanvas = document.getElementById('pdfCanvas');
@@ -227,54 +150,35 @@ const zoomOutBtn = document.getElementById('zoomOut');
 const zoomResetBtn = document.getElementById('zoomReset');
 const zoomPercentDom = document.getElementById('zoomPercent');
 const pdfWrap = document.getElementById("pdfWrap");
+
 let currentPdfDoc = null;
 let currentPage = 1;
 let scale = 1.4;
 const MIN_SCALE = 0.4;
 const MAX_SCALE = 4.0;
 const STEP = 0.15;
-// 更新缩放百分比显示
+
 function updateZoomDisplay(){
     zoomPercentDom.innerText = Math.round(scale * 100);
 }
-//渲染【默认全部展开】双科目目录
+
 function renderChapterList(){
     chapterListDom.innerHTML = '';
-    categoryData.forEach(cat=>{
-        const catWrap = document.createElement('div');
-        catWrap.className = 'category-item';
-        const catHeader = document.createElement('div');
-        catHeader.className = 'category-header';
-        //默认展开，箭头向下▼
-        catHeader.innerHTML = `<span>${cat.categoryName}</span><span class="arrow">▼</span>`;
-        const subWrap = document.createElement('div');
-        subWrap.className = 'chapter-sub-list';
-        cat.chapters.forEach(ch=>{
-            const chDiv = document.createElement('div');
-            chDiv.className = 'chapter-item';
-            chDiv.innerText = ch.title;
-            chDiv.dataset.id = ch.id;
-            chDiv.onclick = ()=>{
-                document.querySelectorAll('.chapter-item').forEach(d=>d.classList.remove('active'));
-                chDiv.classList.add('active');
-                scale = 1.4;
-                updateZoomDisplay();
-                loadPdf(ch.pdfUrl, ch.title);
-            }
-            subWrap.appendChild(chDiv);
-        })
-        //点击科目标题切换折叠
-        catHeader.onclick = ()=>{
-            subWrap.classList.toggle('collapse');
-            const arrow = catHeader.querySelector('.arrow');
-            arrow.classList.toggle('fold');
+    chapters.forEach(ch=>{
+        const chDiv = document.createElement('div');
+        chDiv.className = 'chapter-item';
+        chDiv.innerText = ch.title;
+        chDiv.onclick = ()=>{
+            document.querySelectorAll('.chapter-item').forEach(d=>d.classList.remove('active'));
+            chDiv.classList.add('active');
+            scale = 1.4;
+            updateZoomDisplay();
+            loadPdf(ch.pdfUrl, ch.title);
         }
-        catWrap.appendChild(catHeader);
-        catWrap.appendChild(subWrap);
-        chapterListDom.appendChild(catWrap);
+        chapterListDom.appendChild(chDiv);
     })
 }
-//加载PDF
+
 async function loadPdf(url, title){
     chapterTitleDom.innerText = title;
     tipEmpty.style.display = 'none';
@@ -292,7 +196,7 @@ async function loadPdf(url, title){
         pdfCanvas.style.display='none';
     }
 }
-//超清渲染PDF页面
+
 async function renderPage(pageNo){
     const page = await currentPdfDoc.getPage(pageNo);
     const viewport = page.getViewport({scale:scale});
@@ -304,68 +208,46 @@ async function renderPage(pageNo){
     pdfCanvas.style.width = viewport.width + "px";
     pdfCanvas.style.height = viewport.height + "px";
     ctx.setTransform(totalRatio,0,0,totalRatio,0,0);
-    await page.render({
-        canvasContext:ctx,
-        viewport:viewport,
-        intent:"print"
-    }).promise;
+    await page.render({canvasContext:ctx, viewport:viewport, intent:"print"}).promise;
     pageNumDom.innerText = pageNo;
     toggleBtn();
     updateZoomDisplay();
 }
-//翻页按钮状态
+
 function toggleBtn(){
     prevBtn.disabled = currentPage <=1;
     nextBtn.disabled = currentPage >= currentPdfDoc.numPages;
 }
+
 prevBtn.onclick = ()=>{
-    if(currentPage>1){
-        currentPage--;
-        renderPage(currentPage);
-    }
+    if(currentPage>1){ currentPage--; renderPage(currentPage); }
 }
 nextBtn.onclick = ()=>{
-    if(currentPage < currentPdfDoc.numPages){
-        currentPage++;
-        renderPage(currentPage);
-    }
+    if(currentPage < currentPdfDoc.numPages){ currentPage++; renderPage(currentPage); }
 }
 zoomInBtn.onclick = ()=>{
     if(!currentPdfDoc) return;
-    if(scale + STEP <= MAX_SCALE){
-        scale += STEP;
-        renderPage(currentPage);
-    }
+    if(scale + STEP <= MAX_SCALE){ scale += STEP; renderPage(currentPage); }
 }
 zoomOutBtn.onclick = ()=>{
     if(!currentPdfDoc) return;
-    if(scale - STEP >= MIN_SCALE){
-        scale -= STEP;
-        renderPage(currentPage);
-    }
+    if(scale - STEP >= MIN_SCALE){ scale -= STEP; renderPage(currentPage); }
 }
 zoomResetBtn.onclick = ()=>{
     if(!currentPdfDoc) return;
-    scale = 1.4;
-    renderPage(currentPage);
+    scale = 1.4; renderPage(currentPage);
 }
-//鼠标滚轮缩放PDF画布
+
 pdfWrap.addEventListener('wheel',(e)=>{
     if(!currentPdfDoc) return;
     e.preventDefault();
     if(e.deltaY < 0){
-        if(scale + STEP <= MAX_SCALE){
-            scale += STEP;
-            renderPage(currentPage);
-        }
+        if(scale + STEP <= MAX_SCALE){ scale += STEP; renderPage(currentPage); }
     }else{
-        if(scale - STEP >= MIN_SCALE){
-            scale -= STEP;
-            renderPage(currentPage);
-        }
+        if(scale - STEP >= MIN_SCALE){ scale -= STEP; renderPage(currentPage); }
     }
 },{passive:false});
-//初始化渲染目录
+
 renderChapterList();
 updateZoomDisplay();
 </script>
